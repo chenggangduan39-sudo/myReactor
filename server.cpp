@@ -1,3 +1,4 @@
+#include "InetAddress.h"
 #include "Logger.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -22,11 +23,8 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 	int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	sockaddr_in address;
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = inet_addr(argv[1]);
-	address.sin_port = htons(atoi(argv[2]));
-	int res = bind(server_fd, (sockaddr*)&address, sizeof(sockaddr_in));
+	InetAddress serverAddr(argv[1], argv[2]);
+	int res = bind(server_fd, serverAddr.getaddr(), serverAddr.getLength());
 	if (res == -1)
 	{
 		LogMessage("Server fd bind failed");
@@ -50,10 +48,10 @@ int main(int argc, char* argv[])
 		{
 			if (events[i].data.fd == server_fd)
 			{
-				sockaddr_in clientAddr;
-				socklen_t length = sizeof(clientAddr);
-				int cfd = accept(server_fd, (sockaddr*)&clientAddr, &length);
-				LogMessage("Accept client:%s %d", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+				InetAddress clientAddr;
+				socklen_t length = clientAddr.getLength();
+				int cfd = accept(server_fd, clientAddr.getaddr(), &length);
+				LogMessage("Accept client:%s %d", clientAddr.getIP(), clientAddr.getPort());
 				setNonBlock(cfd);
 				epoll_event cev;
 				cev.data.fd = cfd;
@@ -74,7 +72,7 @@ int main(int argc, char* argv[])
 				}
 				if (num == 0)
 				{
-					LogMessage("Client has disconnected");
+					LogMessage("Disconnected");
 					epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 					close(events[i].data.fd);
 				}
