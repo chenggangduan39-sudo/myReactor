@@ -1,3 +1,4 @@
+#include "Epoll.h"
 #include "InetAddress.h"
 #include "Logger.h"
 #include "Socket.h"
@@ -30,18 +31,14 @@ int main(int argc, char* argv[])
 		LogMessage("Server fd listen failed");
 	else
 		LogMessage("Server is listening");
-	int epfd = epoll_create(1);
-	epoll_event ev;
-	ev.data.fd = serverSock.getFd();
-	ev.events = EPOLLIN;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, serverSock.getFd(), &ev);
-	epoll_event events[1024];
+	Epoll epoll;
+	epoll.epollAdd(serverSock.getFd());
 	while (true)
 	{
-		int count = epoll_wait(epfd, events, sizeof(events) / sizeof(events[0]), -1);
-		for (int i = 0; i < count; i++)
+		std::vector<epoll_event> events = epoll.wait();
+		for (auto event : events)
 		{
-			if (events[i].data.fd == serverSock.getFd())
+			if (event.data.fd == serverSock.getFd())
 			{
 				InetAddress clientAddr;
 				socklen_t length = clientAddr.getLength();
@@ -49,28 +46,24 @@ int main(int argc, char* argv[])
 				Socket* clientSock = new Socket(cfd);
 				LogMessage("Accept client:%s %d", clientAddr.getIP(), clientAddr.getPort());
 				clientSock->setNonBlock();
-				epoll_event cev;
-				cev.data.fd = clientSock->getFd();
-				cev.events = EPOLLIN | EPOLLET;
-				epoll_ctl(epfd, EPOLL_CTL_ADD, clientSock->getFd(), &cev);
+				epoll.epollAdd(clientSock->getFd());
 			}
 			else
 			{
 				char buffer[1024];
 				memset(buffer, 0, sizeof(buffer));
 				int num = 0;
-				while (num = read(events[i].data.fd, buffer, sizeof(buffer)))
+				while (num = read(event.data.fd, buffer, sizeof(buffer)))
 				{
 					if (num <= 0)
 						break;
 					LogMessage(buffer);
-					send(events[i].data.fd, buffer, sizeof(buffer), 0);
+					send(event.data.fd, buffer, sizeof(buffer), 0);
 				}
 				if (num == 0)
 				{
 					LogMessage("Disconnected");
-					epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-					close(events[i].data.fd);
+					epoll.epollRemove(event.data.fd);
 				}
 				else if ((num == -1 && errno == EAGAIN) || (num == -1 && errno == EWOULDBLOCK))
 					break;
