@@ -1,5 +1,6 @@
 #include "InetAddress.h"
 #include "Logger.h"
+#include "Socket.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -9,12 +10,6 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-void setNonBlock(int fd)
-{
-	int flag = fcntl(fd, F_GETFL);
-	flag |= O_NONBLOCK;
-	fcntl(fd, F_SETFL, flag);
-}
 int main(int argc, char* argv[])
 {
 	if (argc != 3)
@@ -22,41 +17,42 @@ int main(int argc, char* argv[])
 		LogMessage("usage: ./server <ip> <port>");
 		exit(-1);
 	}
-	int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	InetAddress serverAddr(argv[1], argv[2]);
-	int res = bind(server_fd, serverAddr.getaddr(), serverAddr.getLength());
+	Socket serverSock;
+	int res = serverSock.socketBind(serverAddr);
 	if (res == -1)
 	{
 		LogMessage("Server fd bind failed");
 		exit(-1);
 	}
-	int ret = listen(server_fd, 128);
+	int ret = serverSock.socketListen();
 	if (ret == -1)
 		LogMessage("Server fd listen failed");
 	else
 		LogMessage("Server is listening");
 	int epfd = epoll_create(1);
 	epoll_event ev;
-	ev.data.fd = server_fd;
+	ev.data.fd = serverSock.getFd();
 	ev.events = EPOLLIN;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, server_fd, &ev);
+	epoll_ctl(epfd, EPOLL_CTL_ADD, serverSock.getFd(), &ev);
 	epoll_event events[1024];
 	while (true)
 	{
 		int count = epoll_wait(epfd, events, sizeof(events) / sizeof(events[0]), -1);
 		for (int i = 0; i < count; i++)
 		{
-			if (events[i].data.fd == server_fd)
+			if (events[i].data.fd == serverSock.getFd())
 			{
 				InetAddress clientAddr;
 				socklen_t length = clientAddr.getLength();
-				int cfd = accept(server_fd, clientAddr.getaddr(), &length);
+				int cfd = accept(serverSock.getFd(), clientAddr.getaddr(), &length);
+				Socket* clientSock = new Socket(cfd);
 				LogMessage("Accept client:%s %d", clientAddr.getIP(), clientAddr.getPort());
-				setNonBlock(cfd);
+				clientSock->setNonBlock();
 				epoll_event cev;
-				cev.data.fd = cfd;
+				cev.data.fd = clientSock->getFd();
 				cev.events = EPOLLIN | EPOLLET;
-				epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &cev);
+				epoll_ctl(epfd, EPOLL_CTL_ADD, clientSock->getFd(), &cev);
 			}
 			else
 			{
@@ -81,6 +77,5 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
-	close(server_fd);
 	return 0;
 }
