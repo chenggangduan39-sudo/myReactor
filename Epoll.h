@@ -3,6 +3,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <vector>
+class Channel;
 class Epoll
 {
 private:
@@ -12,9 +13,9 @@ private:
 
 public:
 	Epoll();
-	void epollAdd(int fd);
-	void epollRemove(int fd);
-	std::vector<epoll_event> wait(int time = -1);
+	void epollAdd(Channel* channel);
+	void epollRemove(Channel* chanenl);
+	std::vector<Channel*> wait(int time = -1);
 	~Epoll();
 };
 #endif

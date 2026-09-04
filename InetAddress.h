@@ -13,6 +13,7 @@ public:
 	InetAddress();
 	sockaddr* getaddr();
 	socklen_t getLength();
+	socklen_t* getLengthAddr();
 	char* getIP();
 	int getPort();
 	~InetAddress();

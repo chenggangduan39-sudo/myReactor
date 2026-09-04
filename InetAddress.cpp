@@ -14,6 +14,10 @@ sockaddr* InetAddress::getaddr()
 {
 	return (sockaddr*)&m_address;
 }
+socklen_t* InetAddress::getLengthAddr()
+{
+	return &m_addrLength;
+}
 char* InetAddress::getIP()
 {
 	return inet_ntoa(m_address.sin_addr);
