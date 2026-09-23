@@ -31,7 +31,7 @@ void Acceptor::acceptClient()
 	int cfd = accept(m_serverSock->getFd(), clientAddr->getaddr(), clientAddr->getLengthAddr());
 	m_CallBack(cfd, clientAddr);
 }
-void Acceptor::setCallBack(std::function<void(int fd, InetAddress* clientAddr)> callBack)
+void Acceptor::setCallBack(std::function<void(int, InetAddress*)> callBack)
 {
 	m_CallBack = callBack;
 }

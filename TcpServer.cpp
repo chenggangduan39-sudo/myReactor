@@ -4,19 +4,24 @@
 #include "InetAddress.h"
 #include "Logger.h"
 #include "Socket.h"
-TcpServer::TcpServer(char IP[], char port[])
+TcpServer::TcpServer(char IP[], char port[], int threadNum) : m_threadNum(threadNum)
 {
-	m_acceptor = new Acceptor(IP, port, &m_evloop);
-	m_acceptor->setCallBack(
-	    std::bind(&TcpServer::createConnection, this, std::placeholders::_1, std::placeholders::_2, &m_evloop));
+	m_acceptor = new Acceptor(IP, port, &m_mainLoop);
+	m_threadPool = new ThreadPool(m_threadNum);
+	for (int i = 0; i < m_threadNum; i++)
+	{
+		m_evloops.emplace_back(new EventLoop);
+		m_threadPool->addTask(std::bind(&EventLoop::run, m_evloops[i]));
+	}
+	m_acceptor->setCallBack(std::bind(&TcpServer::createConnection, this, std::placeholders::_1, std::placeholders::_2));
 }
 void TcpServer::start()
 {
-	m_evloop.run();
+	m_mainLoop.run();
 }
-void TcpServer::createConnection(int fd, InetAddress* clientAddr, EventLoop* evloop)
+void TcpServer::createConnection(int fd, InetAddress* clientAddr)
 {
-	Connection* connection = new Connection(fd, clientAddr, evloop);
+	Connection* connection = new Connection(fd, clientAddr, m_evloops[fd % m_threadNum]);
 	connection->setCallBack(std::bind(&TcpServer::disconnect, this, std::placeholders::_1));
 	connection->setHandleCallBack(m_handleCallBack);
 	m_connlist.insert({fd, connection});
