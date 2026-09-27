@@ -3,23 +3,13 @@
 #include "Logger.h"
 #include <functional>
 #include <string.h>
-EchoServer::EchoServer(char IP[], char port[]) : m_tcpServer(IP, port)
+EchoServer::EchoServer(char IP[], char port[], int threadNum) : m_tcpServer(IP, port), m_workThreadPool(threadNum)
 {
 	m_tcpServer.setHandleCallBack(std::bind(&EchoServer::handleMessage, this, std::placeholders::_1));
 }
 void EchoServer::handleMessage(Connection* conn)
 {
-	Buffer* inputBuffer = conn->getInputBuffer();
-	Buffer* outputBuffer = conn->getOutputBuffer();
-	while (!inputBuffer->isEmpty())
-	{
-		std::string message;
-		if (!parseMessage(conn, message))
-			break;
-		LogMessage("Recieve:%s", message.data());
-		outputBuffer->append(message.data(), message.size());
-	}
-	conn->sendMessage();
+	m_workThreadPool.addTask(std::bind(&EchoServer::onMessage, this, conn));
 }
 bool EchoServer::parseMessage(Connection* conn, std::string& message)
 {
@@ -38,6 +28,20 @@ bool EchoServer::parseMessage(Connection* conn, std::string& message)
 		inputBuffer->erase(0, length + 4);
 		return true;
 	}
+}
+void EchoServer::onMessage(Connection* conn)
+{
+	Buffer* inputBuffer = conn->getInputBuffer();
+	Buffer* outputBuffer = conn->getOutputBuffer();
+	while (!inputBuffer->isEmpty())
+	{
+		std::string message;
+		if (!parseMessage(conn, message))
+			break;
+		LogMessage("Recieve:%s", message.data());
+		outputBuffer->append(message.data(), message.size());
+	}
+	conn->sendMessage();
 }
 void EchoServer::start()
 {
