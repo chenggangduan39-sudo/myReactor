@@ -1,5 +1,7 @@
 #include "EventLoop.h"
 #include "Channel.h"
+#include "Logger.h"
+#include <sys/syscall.h>
 #include <vector>
 void EventLoop::add(Channel* channel)
 {
@@ -15,6 +17,7 @@ void EventLoop::modify(Channel* channel)
 }
 void EventLoop::run()
 {
+	// LogMessage("EventLoop::run() thread is %d", syscall(SYS_gettid));
 	while (true)
 	{
 		std::vector<Channel*> channels = m_epoll.wait();

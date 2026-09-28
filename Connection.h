@@ -2,11 +2,14 @@
 #define __CONNECTION__
 #include "Buffer.h"
 #include <functional>
+#include <memory>
+class Connection;
+using sharedPtrConn = std::shared_ptr<Connection>;
 class Socket;
 class InetAddress;
 class Channel;
 class EventLoop;
-class Connection
+class Connection : public std::enable_shared_from_this<Connection>
 {
 private:
 	Socket* m_clientSock;
@@ -16,13 +19,13 @@ private:
 	Buffer m_inputBuffer;
 	Buffer m_outputBuffer;
 	std::function<void(int)> m_callBack;
-	std::function<void(Connection*)> m_handleCallBack;
+	std::function<void(sharedPtrConn)> m_handleCallBack;
 
 public:
 	Connection(int fd, InetAddress* clientAddr, EventLoop* evloop);
 	void recieveMessage();
 	void setCallBack(std::function<void(int)> callBack);
-	void setHandleCallBack(std::function<void(Connection*)> m_handleCallBack);
+	void setHandleCallBack(std::function<void(sharedPtrConn)> m_handleCallBack);
 	Buffer* getInputBuffer();
 	Buffer* getOutputBuffer();
 	void sendMessage();

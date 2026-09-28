@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	// 	read(client_fd, buffer, sizeof(buffer));
 	// 	LogMessage("Recieve:%s", buffer);
 	// }
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		char tmp[1024];
 		memset(tmp, 0, sizeof(tmp));
@@ -58,6 +58,8 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
+	// sleep(1);
+	// return 0;
 	while (true)
 	{
 		char buffer[1024];

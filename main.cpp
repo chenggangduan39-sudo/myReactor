@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 		LogMessage("usage: ./server <ip> <port>");
 		exit(-1);
 	}
-	EchoServer server(argv[1], argv[2]);
+	EchoServer server(argv[1], argv[2], 5, 3);
 	server.start();
 	return 0;
 }

@@ -1,5 +1,6 @@
 #ifndef __TCPSERVER__
 #define __TCPSERVER__
+#include "Connection.h"
 #include "EventLoop.h"
 #include "ThreadPool.h"
 #include <functional>
@@ -18,14 +19,14 @@ private:
 	std::vector<EventLoop*> m_evloops;
 	ThreadPool* m_threadPool;
 	int m_threadNum;
-	std::unordered_map<int, Connection*> m_connlist;
-	std::function<void(Connection*)> m_handleCallBack;
+	std::unordered_map<int, sharedPtrConn> m_connlist;
+	std::function<void(sharedPtrConn)> m_handleCallBack;
 
 public:
-	TcpServer(char IP[], char port[], int threadNum = 8);
+	TcpServer(char IP[], char port[], int threadNum);
 	void start();
 	void createConnection(int fd, InetAddress* clientAddr);
 	void disconnect(int cfd);
-	void setHandleCallBack(std::function<void(Connection*)> handleCallBack);
+	void setHandleCallBack(std::function<void(sharedPtrConn)> handleCallBack);
 };
 #endif

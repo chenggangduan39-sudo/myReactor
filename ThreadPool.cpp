@@ -1,9 +1,13 @@
 #include "ThreadPool.h"
-ThreadPool::ThreadPool(int num)
+#include "Logger.h"
+#include <sys/syscall.h>
+#include <unistd.h>
+ThreadPool::ThreadPool(int num, std::string threadType) : m_threadType(threadType)
 {
 	for (int i = 0; i < num; i++)
 	{
 		workThreads.emplace_back([this]() {
+			LogMessage("Create %s thread %d", m_threadType.c_str(), syscall(SYS_gettid));
 			while (true)
 			{
 				std::unique_lock<std::mutex> mtLock(mtx);
@@ -14,6 +18,7 @@ ThreadPool::ThreadPool(int num)
 				taskQueue.pop();
 				mtLock.unlock();
 				task();
+				LogMessage("%s(%d) execute task completed", m_threadType.c_str(), syscall(SYS_gettid));
 			}
 		});
 	}

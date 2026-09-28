@@ -3,15 +3,24 @@
 #include "Logger.h"
 #include <functional>
 #include <string.h>
-EchoServer::EchoServer(char IP[], char port[], int threadNum) : m_tcpServer(IP, port), m_workThreadPool(threadNum)
+#include <sys/syscall.h>
+EchoServer::EchoServer(char IP[], char port[], int workerThreadNum, int subReactorNum)
+    : m_tcpServer(IP, port, subReactorNum), m_workerThreadNum(workerThreadNum),
+      m_workThreadPool(workerThreadNum, "WORKER")
 {
+	if (m_workerThreadNum == 0)
+		LogMessage("EchoServer::EchoServer():No threads were created");
 	m_tcpServer.setHandleCallBack(std::bind(&EchoServer::handleMessage, this, std::placeholders::_1));
 }
-void EchoServer::handleMessage(Connection* conn)
+void EchoServer::handleMessage(sharedPtrConn conn)
 {
-	m_workThreadPool.addTask(std::bind(&EchoServer::onMessage, this, conn));
+	LogMessage("EchoServer::handleMessage() thread is %d", syscall(SYS_gettid));
+	if (m_workerThreadNum > 0)
+		m_workThreadPool.addTask(std::bind(&EchoServer::handleBusiness, this, conn));
+	else
+		handleBusiness(conn);
 }
-bool EchoServer::parseMessage(Connection* conn, std::string& message)
+bool EchoServer::parseMessage(sharedPtrConn conn, std::string& message)
 {
 	Buffer* inputBuffer = conn->getInputBuffer();
 	if (inputBuffer->isEmpty())
@@ -29,8 +38,9 @@ bool EchoServer::parseMessage(Connection* conn, std::string& message)
 		return true;
 	}
 }
-void EchoServer::onMessage(Connection* conn)
+void EchoServer::handleBusiness(sharedPtrConn conn)
 {
+	LogMessage("EchoServer::handleBusiness() thread is %d", syscall(SYS_gettid));
 	Buffer* inputBuffer = conn->getInputBuffer();
 	Buffer* outputBuffer = conn->getOutputBuffer();
 	while (!inputBuffer->isEmpty())
@@ -39,6 +49,7 @@ void EchoServer::onMessage(Connection* conn)
 		if (!parseMessage(conn, message))
 			break;
 		LogMessage("Recieve:%s", message.data());
+		// sleep(2);
 		outputBuffer->append(message.data(), message.size());
 	}
 	conn->sendMessage();

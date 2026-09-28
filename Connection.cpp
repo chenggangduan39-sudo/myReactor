@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "Socket.h"
 #include <string.h>
+#include <sys/syscall.h>
 Connection::Connection(int fd, InetAddress* clientAddr, EventLoop* evloop) : m_clientAddr(clientAddr), m_evloop(evloop)
 {
 	m_clientSock = new Socket(fd);
@@ -36,7 +37,7 @@ void Connection::recieveMessage()
 		notifyToDisconnect(m_clientSock->getFd());
 	}
 	else if ((num == -1 && errno == EAGAIN) || (num == -1 && errno == EWOULDBLOCK))
-		m_handleCallBack(this);
+		m_handleCallBack(shared_from_this());
 	else if (num == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
 	{
 		LogMessage("Something is wrong");
@@ -48,7 +49,7 @@ void Connection::setCallBack(std::function<void(int)> callBack)
 {
 	m_callBack = callBack;
 }
-void Connection::setHandleCallBack(std::function<void(Connection*)> handleCallBack)
+void Connection::setHandleCallBack(std::function<void(sharedPtrConn)> handleCallBack)
 {
 	m_handleCallBack = handleCallBack;
 }
@@ -62,6 +63,7 @@ Buffer* Connection::getOutputBuffer()
 }
 void Connection::sendMessage()
 {
+	LogMessage("Connection::sendMessage() thread is %d", syscall(SYS_gettid));
 	while (!m_outputBuffer.isEmpty())
 	{
 		int res = send(m_clientSock->getFd(), m_outputBuffer.data(), m_outputBuffer.size(), 0);
