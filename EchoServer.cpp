@@ -42,17 +42,15 @@ void EchoServer::handleBusiness(sharedPtrConn conn)
 {
 	LogMessage("EchoServer::handleBusiness() thread is %d", syscall(SYS_gettid));
 	Buffer* inputBuffer = conn->getInputBuffer();
-	Buffer* outputBuffer = conn->getOutputBuffer();
+	std::string message;
 	while (!inputBuffer->isEmpty())
 	{
-		std::string message;
 		if (!parseMessage(conn, message))
 			break;
 		LogMessage("Recieve:%s", message.data());
 		// sleep(2);
-		outputBuffer->append(message.data(), message.size());
+		conn->sendMessage(message);
 	}
-	conn->sendMessage();
 }
 void EchoServer::start()
 {

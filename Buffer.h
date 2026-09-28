@@ -7,7 +7,7 @@ private:
 	std::string m_buffer;
 
 public:
-	void append(char* data, int size);
+	void append(const char* data, int size);
 	void erase(int pos, int count);
 	char* data();
 	size_t size();

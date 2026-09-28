@@ -1,5 +1,5 @@
 #include "Buffer.h"
-void Buffer::append(char* data, int size)
+void Buffer::append(const char* data, int size)
 {
 	m_buffer.append(data, size);
 }

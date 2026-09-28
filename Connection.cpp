@@ -13,7 +13,7 @@ Connection::Connection(int fd, InetAddress* clientAddr, EventLoop* evloop) : m_c
 	m_clientChannel->enableReading();
 	m_clientChannel->setET();
 	m_clientChannel->setReadCallBack(std::bind(&Connection::recieveMessage, this));
-	m_clientChannel->setWriteCallBack(std::bind(&Connection::sendMessage, this));
+	m_clientChannel->setWriteCallBack(std::bind(&Connection::sendData, this));
 	LogMessage("Accept client:%s %d", m_clientAddr->getIP(), m_clientAddr->getPort());
 	evloop->add(m_clientChannel);
 }
@@ -61,18 +61,24 @@ Buffer* Connection::getOutputBuffer()
 {
 	return &m_outputBuffer;
 }
-void Connection::sendMessage()
+void Connection::sendMessage(std::string message)
 {
 	LogMessage("Connection::sendMessage() thread is %d", syscall(SYS_gettid));
+	auto self = shared_from_this();
+	m_evloop->addTask([self, message]() {
+		self->m_outputBuffer.append(message.data(), message.size());
+		self->m_clientChannel->enableWriting();
+		self->m_evloop->modify(self->m_clientChannel);
+	});
+}
+void Connection::sendData()
+{
+	LogMessage("Connection::sendData() thread is %d", syscall(SYS_gettid));
 	while (!m_outputBuffer.isEmpty())
 	{
 		int res = send(m_clientSock->getFd(), m_outputBuffer.data(), m_outputBuffer.size(), 0);
 		if ((res == -1 && errno == EAGAIN) || (res == -1 && errno == EWOULDBLOCK))
-		{
-			m_clientChannel->enableWriting();
-			m_evloop->modify(m_clientChannel);
 			return;
-		}
 		else if (res > 0)
 			m_outputBuffer.erase(0, res);
 	}

@@ -28,7 +28,8 @@ public:
 	void setHandleCallBack(std::function<void(sharedPtrConn)> m_handleCallBack);
 	Buffer* getInputBuffer();
 	Buffer* getOutputBuffer();
-	void sendMessage();
+	void sendMessage(std::string message);
+	void sendData();
 	void notifyToDisconnect(int cfd);
 	~Connection();
 };
