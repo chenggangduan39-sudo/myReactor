@@ -15,10 +15,18 @@ EchoServer::EchoServer(char IP[], char port[], int workerThreadNum, int subReact
 void EchoServer::handleMessage(sharedPtrConn conn)
 {
 	LogMessage("EchoServer::handleMessage() thread is %d", syscall(SYS_gettid));
-	if (m_workerThreadNum > 0)
-		m_workThreadPool.addTask(std::bind(&EchoServer::handleBusiness, this, conn));
-	else
-		handleBusiness(conn);
+	Buffer* inputBuffer = conn->getInputBuffer();
+	std::string message;
+	while (!inputBuffer->isEmpty())
+	{
+		if (!parseMessage(conn, message))
+			break;
+		LogMessage("Recieve:%s", message.data());
+		if (m_workerThreadNum > 0)
+			m_workThreadPool.addTask(std::bind(&EchoServer::handleBusiness, this, conn, message));
+		else
+			handleBusiness(conn, message);
+	}
 }
 bool EchoServer::parseMessage(sharedPtrConn conn, std::string& message)
 {
@@ -38,19 +46,10 @@ bool EchoServer::parseMessage(sharedPtrConn conn, std::string& message)
 		return true;
 	}
 }
-void EchoServer::handleBusiness(sharedPtrConn conn)
+void EchoServer::handleBusiness(sharedPtrConn conn, std::string message)
 {
 	LogMessage("EchoServer::handleBusiness() thread is %d", syscall(SYS_gettid));
-	Buffer* inputBuffer = conn->getInputBuffer();
-	std::string message;
-	while (!inputBuffer->isEmpty())
-	{
-		if (!parseMessage(conn, message))
-			break;
-		LogMessage("Recieve:%s", message.data());
-		// sleep(2);
-		conn->sendMessage(message);
-	}
+	conn->sendMessage(message);
 }
 void EchoServer::start()
 {

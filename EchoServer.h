@@ -16,7 +16,7 @@ public:
 	EchoServer(char IP[], char port[], int workerThreadNum = 0, int subReactorNum = 0);
 	void handleMessage(sharedPtrConn conn);
 	bool parseMessage(sharedPtrConn conn, std::string& message);
-	void handleBusiness(sharedPtrConn conn);
+	void handleBusiness(sharedPtrConn conn, std::string message);
 	void start();
 };
 #endif
