@@ -7,7 +7,7 @@ void Buffer::erase(int pos, int count)
 {
 	m_buffer.erase(pos, count);
 }
-char* Buffer::data()
+const char* Buffer::data()
 {
 	return m_buffer.data();
 }

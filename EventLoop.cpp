@@ -32,11 +32,30 @@ void EventLoop::addTask(std::function<void()> task)
 	mtLock.unlock();
 	wakeUp();
 }
+void EventLoop::executeTask()
+{
+	while (true)
+	{
+		std::unique_lock<std::mutex> mtLock(mtx);
+		if (m_taskQueue.empty())
+			break;
+		std::function<void()> task = m_taskQueue.front();
+		m_taskQueue.pop();
+		mtLock.unlock();
+		task();
+	}
+}
 void EventLoop::readWakeUpData()
 {
 	char buffer[1024];
 	memset(buffer, 0, sizeof(buffer));
-	read(m_socketPair[1], buffer, sizeof(buffer));
+	while (true)
+	{
+		int num = read(m_socketPair[1], buffer, sizeof(buffer));
+		memset(buffer, 0, sizeof(buffer));
+		if ((num == -1 && errno == EAGAIN) || (num == -1 && errno == EWOULDBLOCK))
+			break;
+	}
 }
 void EventLoop::wakeUp()
 {
@@ -51,16 +70,7 @@ void EventLoop::run()
 		std::vector<Channel*> channels = m_epoll.wait();
 		for (auto channel : channels)
 			channel->handleEvent();
-		while (true)
-		{
-			std::unique_lock<std::mutex> mtLock(mtx);
-			if (m_taskQueue.empty())
-				break;
-			std::function<void()> task = m_taskQueue.front();
-			m_taskQueue.pop();
-			mtLock.unlock();
-			task();
-		}
+		executeTask();
 	}
 }
 EventLoop::~EventLoop()

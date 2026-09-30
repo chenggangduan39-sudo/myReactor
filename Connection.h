@@ -18,6 +18,7 @@ private:
 	EventLoop* m_evloop;
 	Buffer m_inputBuffer;
 	Buffer m_outputBuffer;
+	bool isValid;
 	std::function<void(int)> m_callBack;
 	std::function<void(sharedPtrConn)> m_handleCallBack;
 
@@ -29,8 +30,9 @@ public:
 	Buffer* getInputBuffer();
 	Buffer* getOutputBuffer();
 	void sendMessage(std::string message);
+	void sendTask(std::string message);
 	void sendData();
-	void notifyToDisconnect(int cfd);
+	void notifyToDisconnect();
 	~Connection();
 };
 #endif

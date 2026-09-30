@@ -9,7 +9,7 @@ private:
 public:
 	void append(const char* data, int size);
 	void erase(int pos, int count);
-	char* data();
+	const char* data();
 	size_t size();
 	bool isEmpty();
 };

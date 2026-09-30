@@ -3,9 +3,12 @@
 #include "EventLoop.h"
 #include "Logger.h"
 #include "Socket.h"
+#include "InetAddress.h"
 #include <string.h>
 #include <sys/syscall.h>
-Connection::Connection(int fd, InetAddress* clientAddr, EventLoop* evloop) : m_clientAddr(clientAddr), m_evloop(evloop)
+#include <unistd.h>
+Connection::Connection(int fd, InetAddress* clientAddr, EventLoop* evloop)
+    : m_clientAddr(clientAddr), m_evloop(evloop), isValid(true)
 {
 	m_clientSock = new Socket(fd);
 	m_clientSock->setNonBlock();
@@ -32,17 +35,19 @@ void Connection::recieveMessage()
 	}
 	if (num == 0)
 	{
+		isValid = false;
 		LogMessage("Disconnected");
 		m_evloop->remove(m_clientChannel);
-		notifyToDisconnect(m_clientSock->getFd());
+		notifyToDisconnect();
 	}
 	else if ((num == -1 && errno == EAGAIN) || (num == -1 && errno == EWOULDBLOCK))
 		m_handleCallBack(shared_from_this());
 	else if (num == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
 	{
+		isValid = false;
 		LogMessage("Something is wrong");
 		m_evloop->remove(m_clientChannel);
-		notifyToDisconnect(m_clientSock->getFd());
+		notifyToDisconnect();
 	}
 }
 void Connection::setCallBack(std::function<void(int)> callBack)
@@ -65,15 +70,27 @@ void Connection::sendMessage(std::string message)
 {
 	LogMessage("Connection::sendMessage() thread is %d", syscall(SYS_gettid));
 	auto self = shared_from_this();
-	m_evloop->addTask([self, message]() {
-		self->m_outputBuffer.append(message.data(), message.size());
-		self->m_clientChannel->enableWriting();
-		self->m_evloop->modify(self->m_clientChannel);
-	});
+	m_evloop->addTask(std::bind(&Connection::sendTask, self, message));
+}
+void Connection::sendTask(std::string message)
+{
+	if (isValid == false)
+	{
+		LogMessage("Sending task has been stoped:invalid connection(%d)", syscall(SYS_gettid));
+		return;
+	}
+	m_outputBuffer.append(message.data(), message.size());
+	m_clientChannel->enableWriting();
+	m_evloop->modify(m_clientChannel);
 }
 void Connection::sendData()
 {
 	LogMessage("Connection::sendData() thread is %d", syscall(SYS_gettid));
+	if (isValid == false)
+	{
+		LogMessage("Sending data has been stoped:invalid connection(%d)", syscall(SYS_gettid));
+		return;
+	}
 	while (!m_outputBuffer.isEmpty())
 	{
 		int res = send(m_clientSock->getFd(), m_outputBuffer.data(), m_outputBuffer.size(), 0);
@@ -85,9 +102,13 @@ void Connection::sendData()
 	m_clientChannel->disableWriting();
 	m_evloop->modify(m_clientChannel);
 }
-void Connection::notifyToDisconnect(int cfd)
+void Connection::notifyToDisconnect()
 {
-	m_callBack(cfd);
+	int fd = m_clientSock->getFd();
+	std::function<void(int)> disconnectCallBack = m_callBack;
+	m_evloop->addTask([disconnectCallBack, fd]() {
+		disconnectCallBack(fd);
+	});
 }
 Connection::~Connection()
 {

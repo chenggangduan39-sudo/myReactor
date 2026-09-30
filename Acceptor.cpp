@@ -8,6 +8,7 @@
 Acceptor::Acceptor(char IP[], char port[], EventLoop* evloop) : m_evloop(evloop)
 {
 	m_serverSock = new Socket;
+	m_serverSock->setNonBlock();
 	m_serverAddr = new InetAddress(IP, port);
 	int res = m_serverSock->socketBind(*m_serverAddr);
 	if (res == -1)
@@ -21,15 +22,24 @@ Acceptor::Acceptor(char IP[], char port[], EventLoop* evloop) : m_evloop(evloop)
 	else
 		LogMessage("Server is listening");
 	m_serverChannel = new Channel(m_serverSock->getFd());
+	m_serverChannel->setET();
 	m_serverChannel->enableReading();
 	m_serverChannel->setReadCallBack(std::bind(&Acceptor::acceptClient, this));
 	m_evloop->add(m_serverChannel);
 }
 void Acceptor::acceptClient()
 {
-	InetAddress* clientAddr = new InetAddress;
-	int cfd = accept(m_serverSock->getFd(), clientAddr->getaddr(), clientAddr->getLengthAddr());
-	m_CallBack(cfd, clientAddr);
+	while (true)
+	{
+		InetAddress* clientAddr = new InetAddress;
+		int cfd = accept(m_serverSock->getFd(), clientAddr->getaddr(), clientAddr->getLengthAddr());
+		if ((cfd == -1 && errno == EAGAIN) || (cfd == -1 && errno == EWOULDBLOCK))
+		{
+			delete clientAddr;
+			break;
+		}
+		m_CallBack(cfd, clientAddr);
+	}
 }
 void Acceptor::setCallBack(std::function<void(int, InetAddress*)> callBack)
 {

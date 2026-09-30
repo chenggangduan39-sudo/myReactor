@@ -7,7 +7,7 @@ void Epoll::epollAdd(Channel* channel)
 {
 	epoll_event ev;
 	ev.data.ptr = channel;
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = channel->getEvent();
 	epoll_ctl(m_epfd, EPOLL_CTL_ADD, channel->getFd(), &ev);
 }
 void Epoll::epollRemove(Channel* channel)

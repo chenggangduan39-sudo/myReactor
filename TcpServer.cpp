@@ -34,7 +34,9 @@ void TcpServer::createConnection(int fd, InetAddress* clientAddr)
 }
 void TcpServer::disconnect(int cfd)
 {
-	m_connlist.erase(cfd);
+	m_mainLoop.addTask([this, cfd]() {
+		m_connlist.erase(cfd);
+	});
 }
 void TcpServer::setHandleCallBack(std::function<void(sharedPtrConn)> handleCallBack)
 {

@@ -21,6 +21,7 @@ public:
 	void remove(Channel* channel);
 	void modify(Channel* channel);
 	void addTask(std::function<void()> task);
+	void executeTask();
 	void readWakeUpData();
 	void wakeUp();
 	void run();
