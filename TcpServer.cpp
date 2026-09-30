@@ -31,6 +31,7 @@ void TcpServer::createConnection(int fd, InetAddress* clientAddr)
 	connection->setCallBack(std::bind(&TcpServer::disconnect, this, std::placeholders::_1));
 	connection->setHandleCallBack(m_handleCallBack);
 	m_connlist.insert({fd, connection});
+	connection->enableConnection();
 }
 void TcpServer::disconnect(int cfd)
 {

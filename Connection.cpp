@@ -18,7 +18,13 @@ Connection::Connection(int fd, InetAddress* clientAddr, EventLoop* evloop)
 	m_clientChannel->setReadCallBack(std::bind(&Connection::recieveMessage, this));
 	m_clientChannel->setWriteCallBack(std::bind(&Connection::sendData, this));
 	LogMessage("Accept client:%s %d", m_clientAddr->getIP(), m_clientAddr->getPort());
-	evloop->add(m_clientChannel);
+}
+void Connection::enableConnection()
+{
+	auto self = shared_from_this();
+	m_evloop->addTask([self]() {
+		self->m_evloop->add(self->m_clientChannel);
+	});
 }
 void Connection::recieveMessage()
 {

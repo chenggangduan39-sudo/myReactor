@@ -24,6 +24,7 @@ private:
 
 public:
 	Connection(int fd, InetAddress* clientAddr, EventLoop* evloop);
+	void enableConnection();
 	void recieveMessage();
 	void setCallBack(std::function<void(int)> callBack);
 	void setHandleCallBack(std::function<void(sharedPtrConn)> m_handleCallBack);
