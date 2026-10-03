@@ -11,7 +11,7 @@ Channel::Channel(int fd) : m_fd(fd), m_event(0), m_revent(0)
 }
 void Channel::enableReading()
 {
-	m_event = EPOLLIN;
+	m_event |= EPOLLIN;
 }
 void Channel::disableReading()
 {

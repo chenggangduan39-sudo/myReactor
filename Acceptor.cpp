@@ -38,6 +38,17 @@ void Acceptor::acceptClient()
 			delete clientAddr;
 			break;
 		}
+		else if (cfd == -1 && errno == EINTR)
+		{
+			delete clientAddr;
+			continue;
+		}
+		else if (cfd == -1 && errno == EMFILE)
+		{
+			LogMessage("The system has run out of file descriptors,accept client failed");
+			delete clientAddr;
+			return;
+		}
 		m_CallBack(cfd, clientAddr);
 	}
 }
